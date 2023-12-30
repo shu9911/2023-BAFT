@@ -454,3 +454,49 @@ ggplot(example, aes(x = weekday)) +
   labs(x = "Weekdays", y = "Total Daily Passengers", 
        title = "Forecast Daily Passengers between Nov 6 to 12 2023") +
   theme_bw()
+
+
+# --------------------------------------------------------------------------------
+##### 7 days roll forward ARIMA
+
+# Set the forecast horizon
+horizon = 7
+
+# Create a list to store the forecasts
+forecasts = list()
+
+# Set the initial cutoff date 
+cutoff = ymd("2023-10-31")
+
+while(cutoff < ymd("2023-10-31")) {
+  
+  # Train data up to cutoff  
+  train <- station.long |> filter(time <= cutoff) 
+  
+  # Create models
+  fits <- train |>
+    group_by(train_id) |>
+    model(
+      # naive = NAIVE(total_pass),
+      # snaive = SNAIVE(total_pass),
+      # ets = ETS(total_pass),
+      # reg = TSLM(total_pass ~ trend() + season() + covid),
+      arima = ARIMA(total_pass ~ covid) 
+    )
+  
+  # valid data from cutoff+1 to cutoff+7
+  valid <- station.long |> filter(time > cutoff, time <= cutoff + 7)
+  
+  # Forecast 7 days ahead 
+  forecast <- fits |> forecast(valid)
+  
+  # Save forecasts
+  forecasts[[as.character(cutoff)]] <- forecast
+  
+  # Update cutoff
+  cutoff <- cutoff + days(horizon)
+  
+}
+
+# Bind all the forecasts
+all_forecasts <- bind_rows(forecasts)
